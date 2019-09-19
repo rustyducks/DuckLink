@@ -1,0 +1,22 @@
+# messages definition
+
+[up.OdomReport]
+x  = "f32"
+y  = "f32"
+theta = "f32"
+
+
+[up.SpeedReport]
+vx = "f32"
+vy = "f32"
+vtheta = "f32"
+
+
+[down.Reset]
+
+
+[down.SpeedCommand]
+vx = "f32"
+vy = "f32"
+vtheta = "f32"
+
