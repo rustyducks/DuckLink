@@ -1,17 +1,17 @@
-use toml::value::Value;
 use crate::errors::ParserError;
+use toml::value::Value;
 
 #[derive(Debug)]
 pub struct MsgSpec {
     pub name: String,
-    pub fields: Vec<(String, Type)>
+    pub fields: Vec<(String, Type)>,
 }
 
 impl MsgSpec {
     pub fn new(name: String) -> MsgSpec {
         MsgSpec {
             name,
-            fields : Vec::new()
+            fields: Vec::new(),
         }
     }
 }
@@ -20,14 +20,17 @@ impl MsgSpec {
 
 #[derive(Debug)]
 pub enum Type {
-    I8, I16, I32,
-    U8, U16, U32,
+    I8,
+    I16,
+    I32,
+    U8,
+    U16,
+    U32,
     F32,
-    CHARS(usize)
+    CHARS(usize),
 }
 
 impl Type {
-
     const DEFAULT_CHARS_SIZE: usize = 10;
 
     fn from_string(s: &str) -> Result<Type, ParserError> {
@@ -49,15 +52,15 @@ impl Type {
 
     pub fn from_toml(raw: &Value) -> Result<Type, ParserError> {
         match raw {
-            Value::String(s)=> {
-                Type::from_string(s.as_ref())
-            },
+            Value::String(s) => Type::from_string(s.as_ref()),
             Value::Table(t_table) => {
                 if let Value::String(s) = t_table.get("type").ok_or(ParserError::TypeNotFound)? {
                     let t = Type::from_string(s.as_ref())?;
                     match t {
                         Type::CHARS(_size) => {
-                            if let Value::Integer(size) = t_table.get("size").ok_or(ParserError::SizeNotFound)? {
+                            if let Value::Integer(size) =
+                                t_table.get("size").ok_or(ParserError::SizeNotFound)?
+                            {
                                 if size > &0 {
                                     Ok(Type::CHARS(*size as usize))
                                 } else {
@@ -66,15 +69,14 @@ impl Type {
                             } else {
                                 Err(ParserError::CharSizeInvalid)
                             }
-                            
-                        },
-                        _ => Ok(t)
+                        }
+                        _ => Ok(t),
                     }
                 } else {
                     Err(ParserError::TypeInvalid)
                 }
-            },
-            _ => Err(ParserError::TypeInvalid)
+            }
+            _ => Err(ParserError::TypeInvalid),
         }
     }
 }

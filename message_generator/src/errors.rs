@@ -5,7 +5,7 @@ pub enum ParserError {
     TypeInvalid,
     CharSizeInvalid,
     TypeNotFound,
-    SizeNotFound
+    SizeNotFound,
 }
 
 impl fmt::Display for ParserError {
@@ -15,7 +15,7 @@ impl fmt::Display for ParserError {
             ParserError::CharSizeInvalid => write!(f, "ParserError: chars size invalid!"),
             ParserError::TypeNotFound => write!(f, "ParserError: type not found!"),
             ParserError::SizeNotFound => write!(f, "ParserError: size not found!"),
-        }        
+        }
     }
 }
 
