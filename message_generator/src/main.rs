@@ -12,8 +12,10 @@ use c_generator::CGenerator;
 use generator::Generator;
 use python_generator::PythonGenerator;
 
-fn main() -> Result<(), std::io::Error> {
-    let lang = "python";
+
+fn main() -> Result<(), Vec<String>> {
+    //let lang = "python";
+    let lang = "C";
     let filename = "messages.toml";
     let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
 

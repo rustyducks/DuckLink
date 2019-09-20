@@ -12,31 +12,53 @@ impl PythonGenerator {
         } else {
             msg.fields
                 .iter()
-                .map(|(field_name, t)| {
+                //.map(|(field_name, t)| {
+                .map(|field| {
                     format!(
                         "\t\t{}",
-                        PythonGenerator::init_variable(t, field_name.as_ref())
+                        PythonGenerator::init_variable(field.name.as_ref(), &field.t)
                     )
                 })
                 .collect::<Vec<String>>()
                 .join("\n")
         };
 
+        let getters = msg.fields
+            .iter()
+            .map(|field| {
+                PythonGenerator::make_get_set(&field.name, &field.t)
+            })
+            .collect::<Vec<String>>()
+            .join("\n\n");
+
         let code = format!(
-            "class {}(DuckMsg):\n\tdef __init__(self):\n{}",
-            msg.name, declarations
+            "class {}(DuckMsg):\n\tdef __init__(self):\n{}\n\n{}",
+            msg.name, declarations, getters
         );
 
         code
     }
 
-    fn init_variable(ty: &Type, name: &str) -> String {
+    fn init_variable(name: &str, ty: &Type) -> String {
         match ty {
-            Type::I8 | Type::I16 | Type::I32 => format!("self.{} = 0", name),
-            Type::U8 | Type::U16 | Type::U32 => format!("self.{} = 0", name),
-            Type::F32 => format!("self.{} = 0.0", name),
-            Type::CHARS(_size) => format!("self.{} = b''", name),
+            Type::I8(_b) | Type::I16(_b) | Type::I32(_b) => format!("self._{} = 0", name),
+            Type::U8(_b) | Type::U16(_b) | Type::U32(_b) => format!("self._{} = 0", name),
+            Type::F32(_b) => format!("self._{} = 0.0", name),
+            Type::CHARS(_size) => format!("self._{} = b''", name),
         }
+    }
+
+    fn make_get_set(name: &str, ty: &Type) -> String {
+        let getter = format!("\t@property\n\tdef {name}(self):\n\t\treturn self._{name}", name=name);
+
+        let setter = match ty {
+            Type::CHARS(_) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}={name}", name=name),
+            Type::I8(b)|Type::I16(b)|Type::I32(b)|
+            Type::U8(b)|Type::U16(b)|Type::U32(b)
+                => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min}, {name}, {max})", name=name, min=b.min, max=b.max),
+            Type::F32(b) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min}, {name}, {max})", name=name, min=b.min, max=b.max),
+        };
+        format!("{}\n\n{}", getter, setter)
     }
 }
 

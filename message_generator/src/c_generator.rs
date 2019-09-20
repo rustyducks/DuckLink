@@ -11,8 +11,8 @@ impl CGenerator {
         let vars = msg
             .fields
             .iter()
-            .map(|(field_name, t)| {
-                format!("  {}", CGenerator::init_variable(t, field_name.as_ref()))
+            .map(|field| {
+                format!("  {}", CGenerator::init_variable(field.name.as_ref(), &field.t))
             })
             .collect::<Vec<String>>()
             .join("\n");
@@ -22,15 +22,15 @@ impl CGenerator {
         code
     }
 
-    fn init_variable(ty: &Type, name: &str) -> String {
+    fn init_variable(name: &str, ty: &Type) -> String {
         match ty {
-            Type::I8 => format!("int8_t {};", name),
-            Type::I16 => format!("int16_t {};", name),
-            Type::I32 => format!("int32_t {};", name),
-            Type::U8 => format!("uint8_t {}", name),
-            Type::U16 => format!("uint16_t {};", name),
-            Type::U32 => format!("uint32_t {};", name),
-            Type::F32 => format!("float32_t {};", name),
+            Type::I8(_b) => format!("int8_t {};", name),
+            Type::I16(_b) => format!("int16_t {};", name),
+            Type::I32(_b) => format!("int32_t {};", name),
+            Type::U8(_b) => format!("uint8_t {}", name),
+            Type::U16(_b) => format!("uint16_t {};", name),
+            Type::U32(_b) => format!("uint32_t {};", name),
+            Type::F32(_b) => format!("float32_t {};", name),
             Type::CHARS(size) => format!("char {}[{}];", name, size),
         }
     }
