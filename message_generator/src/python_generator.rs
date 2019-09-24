@@ -4,15 +4,17 @@ use crate::message::{MsgSpec, Type};
 pub struct PythonGenerator;
 
 impl PythonGenerator {
-    const HEADER: &'static str = "import duckmsg";
+    const HEADER: &'static str = "from duckmsg import DuckMsg, clamp";
 
     fn declare_class(msg: &MsgSpec) -> String {
+
+        let msg_id = format!("\t\tself.id = {}", msg.id);
+
         let declarations = if msg.fields.len() == 0 {
             "\t\tpass".to_string()
         } else {
             msg.fields
                 .iter()
-                //.map(|(field_name, t)| {
                 .map(|field| {
                     format!(
                         "\t\t{}",
@@ -23,17 +25,16 @@ impl PythonGenerator {
                 .join("\n")
         };
 
-        let getters = msg.fields
+        let getters = msg
+            .fields
             .iter()
-            .map(|field| {
-                PythonGenerator::make_get_set(&field.name, &field.t)
-            })
+            .map(|field| PythonGenerator::make_get_set(&field.name, &field.t))
             .collect::<Vec<String>>()
             .join("\n\n");
 
         let code = format!(
-            "class {}(DuckMsg):\n\tdef __init__(self):\n{}\n\n{}",
-            msg.name, declarations, getters
+            "class {}(DuckMsg):\n\tdef __init__(self):\n{}\n{}\n\n{}",
+            msg.name, msg_id, declarations, getters
         );
 
         code
@@ -49,7 +50,10 @@ impl PythonGenerator {
     }
 
     fn make_get_set(name: &str, ty: &Type) -> String {
-        let getter = format!("\t@property\n\tdef {name}(self):\n\t\treturn self._{name}", name=name);
+        let getter = format!(
+            "\t@property\n\tdef {name}(self):\n\t\treturn self._{name}",
+            name = name
+        );
 
         let setter = match ty {
             Type::CHARS(_) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}={name}", name=name),

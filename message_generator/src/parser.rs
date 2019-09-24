@@ -1,5 +1,6 @@
 use crate::message::{Field, MsgSpec, Type};
 use toml::value::{Table, Value};
+use inflector::Inflector;
 
 // TODO refaire ça proprement
 
@@ -14,7 +15,7 @@ pub fn parse_toml(contents: &str) -> Result<Vec<MsgSpec>, Vec<String>> {
         Value::Table(t_root) => {
             for (class, msgs) in t_root {
                 if let Value::Table(msgs) = msgs {
-                    let mut msgs = parse_message_class(&class, &msgs)?;
+                    let mut msgs = parse_message_class(&class.to_class_case(), &msgs)?;
                     messages.append(&mut msgs);
                 }
             }
@@ -22,14 +23,9 @@ pub fn parse_toml(contents: &str) -> Result<Vec<MsgSpec>, Vec<String>> {
         _ => println!("ERROR ! Not a table !")
     }
 
-    // for msg_class in msg_classes.iter() {
-    //     if let Some(up_messages) = value.get(msg_class) {
-    //         if let Value::Table(t) = up_messages {
-    //             let mut msgs = parse_message_class(t)?;
-    //             messages.append(&mut msgs);
-    //         }
-    //     }
-    // }
+    for (i, msg) in messages.iter_mut().enumerate() {
+        msg.id = i;
+    }
 
     Ok(messages)
 }
@@ -37,7 +33,7 @@ pub fn parse_toml(contents: &str) -> Result<Vec<MsgSpec>, Vec<String>> {
 fn parse_message_class(class: &str, t: &Table) -> Result<Vec<MsgSpec>, Vec<String>> {
     let msg_errs_tuples = t
         .iter()
-        .filter_map(|(msg_name, m)| get_messages(class, msg_name, m))
+        .filter_map(|(msg_name, m)| get_messages(class, &msg_name.to_class_case(), m))
         .collect::<Vec<_>>();
 
     let (msgs, errs) = msg_errs_tuples.into_iter().fold(
@@ -80,6 +76,7 @@ fn get_messages(class: &str, msg_name: &str, msg_table: &Value) -> Option<(MsgSp
         Some((
             MsgSpec {
                 name,
+                id: 0,
                 fields,
             },
             errs,

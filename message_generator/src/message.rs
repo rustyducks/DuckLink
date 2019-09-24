@@ -60,6 +60,7 @@ macro_rules! set_min_max {
 pub struct MsgSpec {
     pub name: String,
     //pub fields: Vec<(String, Type)>,
+    pub id: usize,
     pub fields: Vec<Field>,
 }
 
