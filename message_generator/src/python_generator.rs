@@ -7,7 +7,6 @@ impl PythonGenerator {
     const HEADER: &'static str = "from duckmsg import DuckMsg, clamp";
 
     fn declare_class(msg: &MsgSpec) -> String {
-
         let msg_id = format!("\t\tself.id = {}", msg.id);
 
         let declarations = if msg.fields.len() == 0 {

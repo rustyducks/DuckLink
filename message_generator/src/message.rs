@@ -3,63 +3,63 @@ use toml::value::Value;
 
 macro_rules! bounds {
     ($name:ident) => {
-        Bounds{
+        Bounds {
             min: std::$name::MIN as i64,
-            max: std::$name::MAX as i64
+            max: std::$name::MAX as i64,
         }
     };
     ($name:ident; $T:ty) => {
-        Bounds{
+        Bounds {
             min: std::$name::MIN as $T,
-            max: std::$name::MAX as $T
+            max: std::$name::MAX as $T,
         }
     };
 }
 
-
-
 macro_rules! set_min_max {
-    ($val:path, $t_table:ident, $b:ident, $t:ident) => {
-        {
-            let mut new_min = $b.min;
-            if let Some(v) = $t_table.get("min") {
-                if let $val(min) = v {
-                    if min >= &$b.min {new_min = *min;} else {return Err(ParserError::BoundsInvalid)}
+    ($val:path, $t_table:ident, $b:ident, $t:ident) => {{
+        let mut new_min = $b.min;
+        if let Some(v) = $t_table.get("min") {
+            if let $val(min) = v {
+                if min >= &$b.min {
+                    new_min = *min;
                 } else {
-                    return Err(ParserError::BoundsInvalid)
+                    return Err(ParserError::BoundsInvalid);
                 }
+            } else {
+                return Err(ParserError::BoundsInvalid);
             }
+        }
 
-            let mut new_max = $b.max;
-            if let Some(v) = $t_table.get("max") {
-                if let $val(max) = v {
-                    if max <= &$b.max {new_max = *max;} else {return Err(ParserError::BoundsInvalid)}
+        let mut new_max = $b.max;
+        if let Some(v) = $t_table.get("max") {
+            if let $val(max) = v {
+                if max <= &$b.max {
+                    new_max = *max;
                 } else {
-                    return Err(ParserError::BoundsInvalid)
+                    return Err(ParserError::BoundsInvalid);
                 }
+            } else {
+                return Err(ParserError::BoundsInvalid);
             }
+        }
 
+        $b.min = new_min;
+        $b.max = new_max;
+
+        if new_min < new_max {
             $b.min = new_min;
             $b.max = new_max;
-
-            if new_min < new_max {
-                $b.min = new_min;
-                $b.max = new_max;
-                Ok(())
-            } else {
-                Err(ParserError::BoundsInvalid)
-            }
-
-            
-
+            Ok(())
+        } else {
+            Err(ParserError::BoundsInvalid)
         }
-    };
+    }};
 }
 
 #[derive(Debug)]
 pub struct MsgSpec {
     pub name: String,
-    //pub fields: Vec<(String, Type)>,
     pub id: usize,
     pub fields: Vec<Field>,
 }
@@ -67,13 +67,13 @@ pub struct MsgSpec {
 #[derive(Debug)]
 pub struct Field {
     pub name: String,
-    pub t: Type
+    pub t: Type,
 }
 
 #[derive(Debug)]
 pub struct Bounds<T> {
     pub min: T,
-    pub max: T
+    pub max: T,
 }
 
 #[derive(Debug)]
@@ -89,9 +89,7 @@ pub enum Type {
 }
 
 impl Type {
-
     const DEFAULT_CHARS_SIZE: usize = 10;
-    
 
     fn from_string(s: &str) -> Result<Type, ParserError> {
         match s.as_ref() {
@@ -117,16 +115,19 @@ impl Type {
                 if let Value::String(s) = t_table.get("type").ok_or(ParserError::TypeNotFound)? {
                     let mut t = Type::from_string(s.as_ref())?;
                     match t {
-                        Type::I8(ref mut b) | Type::I16(ref mut b) | Type::I32(ref mut b)|
-                        Type::U8(ref mut b) | Type::U16(ref mut b) | Type::U32(ref mut b)
-                            => {
-                                set_min_max!(Value::Integer, t_table, b, t)?;
-                                Ok(t)
-                            },
+                        Type::I8(ref mut b)
+                        | Type::I16(ref mut b)
+                        | Type::I32(ref mut b)
+                        | Type::U8(ref mut b)
+                        | Type::U16(ref mut b)
+                        | Type::U32(ref mut b) => {
+                            set_min_max!(Value::Integer, t_table, b, t)?;
+                            Ok(t)
+                        }
                         Type::F32(ref mut b) => {
                             set_min_max!(Value::Float, t_table, b, t)?;
                             Ok(t)
-                        },
+                        }
                         Type::CHARS(_size) => {
                             if let Value::Integer(size) =
                                 t_table.get("size").ok_or(ParserError::SizeNotFound)?
@@ -139,7 +140,7 @@ impl Type {
                             } else {
                                 Err(ParserError::CharSizeInvalid)
                             }
-                        },
+                        }
                     }
                 } else {
                     Err(ParserError::TypeInvalid)

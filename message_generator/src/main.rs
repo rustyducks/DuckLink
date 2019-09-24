@@ -1,6 +1,6 @@
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::fs;
 use termion::color;
 
 mod c_generator;
@@ -32,8 +32,6 @@ fn main() -> Result<(), Vec<String>> {
         _ => panic!("{} not supported!", lang),
     };
 
-
-
     for (f, txt) in files {
         println!(
             "{}{}\n----------------------------{}",
@@ -46,19 +44,13 @@ fn main() -> Result<(), Vec<String>> {
         let mut file = File::create(path).map_err(|e| {
             println!("{}", e);
             vec!["Fail to create file!".to_string()]
-            })?;
-        file.write_all(&txt.into_bytes()).map_err(|_e| vec!["Fail write file!".to_string()])?;
+        })?;
+        file.write_all(&txt.into_bytes())
+            .map_err(|_e| vec!["Fail write file!".to_string()])?;
     }
-
-    
-
-
 
     Ok(())
 }
-
-
-
 
 // fn main() -> std::io::Result<()> {
 //     let mut file = File::create("foo.txt")?;

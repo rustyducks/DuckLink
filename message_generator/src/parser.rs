@@ -1,6 +1,6 @@
 use crate::message::{Field, MsgSpec, Type};
-use toml::value::{Table, Value};
 use inflector::Inflector;
+use toml::value::{Table, Value};
 
 // TODO refaire ça proprement
 
@@ -19,8 +19,8 @@ pub fn parse_toml(contents: &str) -> Result<Vec<MsgSpec>, Vec<String>> {
                     messages.append(&mut msgs);
                 }
             }
-        },
-        _ => println!("ERROR ! Not a table !")
+        }
+        _ => println!("ERROR ! Not a table !"),
     }
 
     for (i, msg) in messages.iter_mut().enumerate() {
@@ -60,14 +60,12 @@ fn get_messages(class: &str, msg_name: &str, msg_table: &Value) -> Option<(MsgSp
     if let Value::Table(msg_table) = msg_table {
         let (fields, errs): (Vec<_>, Vec<_>) = msg_table
             .iter()
-            .map(|(name, typ)| {
-                match Type::from_toml(typ) {
-                    Ok(pty) => Ok(Field {
-                        name: name.to_string(),
-                        t: pty,
-                    }),
-                    Err(e) => Err(format!("{}.{}: {}", msg_name, name, e)),
-                }
+            .map(|(name, typ)| match Type::from_toml(typ) {
+                Ok(pty) => Ok(Field {
+                    name: name.to_string(),
+                    t: pty,
+                }),
+                Err(e) => Err(format!("{}.{}: {}", msg_name, name, e)),
             })
             .partition(Result::is_ok);
         let fields: Vec<_> = fields.into_iter().map(Result::unwrap).collect();

@@ -19,20 +19,18 @@ impl CPPGenerator {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        
+
         let msg_id = format!("  uint8_t _id;");
 
         let constructor = CPPGenerator::constructor(msg);
-        
+
         let getsets = msg
             .fields
             .iter()
-            .map(|field| {
-                    CPPGenerator::make_get_set(field.name.as_ref(), &field.t)
-            })
+            .map(|field| CPPGenerator::make_get_set(field.name.as_ref(), &field.t))
             .collect::<Vec<String>>()
             .join("\n\n");
-        
+
         let get_id = "  uint8_t get_id(){ return _id; }";
 
         let code = format!("class {name}: public DuckMsg {{\npublic:\n{constructor}\n\n{getid}\n\n{getsets}\n\nprivate:\n{id}\n{vars}\n}};", name=msg.name, constructor=constructor, getid=get_id, getsets=getsets, id=msg_id, vars=vars);
@@ -45,7 +43,7 @@ impl CPPGenerator {
             Type::I8(_b) => "int8_t",
             Type::I16(_b) => "int16_t",
             Type::I32(_b) => "int32_t",
-            Type::U8(_b) =>  "uint8_t",
+            Type::U8(_b) => "uint8_t",
             Type::U16(_b) => "uint16_t",
             Type::U32(_b) => "uint32_t",
             Type::F32(_b) => "float",
@@ -67,7 +65,6 @@ impl CPPGenerator {
     }
 
     fn make_get_set(name: &str, ty: &Type) -> String {
-
         // let setter = match ty {
         //     Type::CHARS(_) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}={name}", name=name),
         //     Type::I8(b)|Type::I16(b)|Type::I32(b)|
@@ -77,14 +74,38 @@ impl CPPGenerator {
         // };
 
         let setter = match ty {
-            Type::CHARS(size) => format!("  void set_{name}({t} {name}) {{\n    strncpy(_{name}, {name}, {size});\n  }}", name=name, t=CPPGenerator::get_type(ty), size=size),
-            Type::I8(b)|Type::I16(b)|Type::I32(b)|
-            Type::U8(b)|Type::U16(b)|Type::U32(b)
-                => format!("  void set_{name}({t} {name}){{ _{name} = clamp({min}, {name}, {max}); }}", name=name, t=CPPGenerator::get_type(ty), min=b.min, max=b.max),
-            Type::F32(b) => format!("  void set_{name}({t} {name}){{ _{name} = clamp({min}, {name}, {max}); }}", name=name, t=CPPGenerator::get_type(ty), min=b.min, max=b.max)
+            Type::CHARS(size) => format!(
+                "  void set_{name}({t} {name}) {{\n    strncpy(_{name}, {name}, {size});\n  }}",
+                name = name,
+                t = CPPGenerator::get_type(ty),
+                size = size
+            ),
+            Type::I8(b)
+            | Type::I16(b)
+            | Type::I32(b)
+            | Type::U8(b)
+            | Type::U16(b)
+            | Type::U32(b) => format!(
+                "  void set_{name}({t} {name}){{ _{name} = clamp({min}, {name}, {max}); }}",
+                name = name,
+                t = CPPGenerator::get_type(ty),
+                min = b.min,
+                max = b.max
+            ),
+            Type::F32(b) => format!(
+                "  void set_{name}({t} {name}){{ _{name} = clamp({min}, {name}, {max}); }}",
+                name = name,
+                t = CPPGenerator::get_type(ty),
+                min = b.min,
+                max = b.max
+            ),
         };
 
-        let getter = format!("  {t} get_{name}(){{ return _{name}; }}", t=CPPGenerator::get_type(ty), name=name);
+        let getter = format!(
+            "  {t} get_{name}(){{ return _{name}; }}",
+            t = CPPGenerator::get_type(ty),
+            name = name
+        );
 
         format!("{}\n{}", getter, setter)
     }
@@ -112,7 +133,12 @@ impl CPPGenerator {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let code = format!("  {name}() {{\n{id}\n{vars}\n  }}", name=msg.name, id=init_id, vars=vars);
+        let code = format!(
+            "  {name}() {{\n{id}\n{vars}\n  }}",
+            name = msg.name,
+            id = init_id,
+            vars = vars
+        );
 
         code
     }

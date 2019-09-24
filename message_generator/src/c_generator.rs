@@ -12,7 +12,10 @@ impl CGenerator {
             .fields
             .iter()
             .map(|field| {
-                format!("  {}", CGenerator::init_variable(field.name.as_ref(), &field.t))
+                format!(
+                    "  {}",
+                    CGenerator::init_variable(field.name.as_ref(), &field.t)
+                )
             })
             .collect::<Vec<String>>()
             .join("\n");

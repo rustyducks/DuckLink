@@ -21,12 +21,6 @@ impl fmt::Display for ParserError {
     }
 }
 
-// impl fmt::Debug for ParserError {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         std::fmt::Display::fmt(self, f)
-//     }
-// }
-
 impl error::Error for ParserError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         // Generic error, underlying cause isn't tracked.
