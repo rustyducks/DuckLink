@@ -66,7 +66,7 @@ impl PythonGenerator {
 }
 
 impl Generator for PythonGenerator {
-    fn generate_code(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
+    fn generate_messages(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
         let classes = messages
             .iter()
             .map(|msg| PythonGenerator::declare_class(msg))

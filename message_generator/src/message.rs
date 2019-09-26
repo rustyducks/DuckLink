@@ -1,6 +1,7 @@
 use crate::errors::ParserError;
 use toml::value::Value;
 
+#[macro_export]
 macro_rules! bounds {
     ($name:ident) => {
         Bounds {
@@ -88,8 +89,27 @@ pub enum Type {
     CHARS(usize),
 }
 
+impl MsgSpec {
+    pub fn get_size(&self) -> usize {
+        self.fields.iter().map(|f| f.t.get_size()).sum()
+    }
+}
+
 impl Type {
     const DEFAULT_CHARS_SIZE: usize = 10;
+
+    pub fn get_size(&self) -> usize {
+        match self {
+            Type::I8(_b) => 1,
+            Type::I16(_b) => 2,
+            Type::I32(_b) => 4,
+            Type::U8(_b) => 1,
+            Type::U16(_b) => 2,
+            Type::U32(_b) => 4,
+            Type::F32(_b) => 4,
+            Type::CHARS(size) => *size,
+        }
+    }
 
     fn from_string(s: &str) -> Result<Type, ParserError> {
         match s.as_ref() {

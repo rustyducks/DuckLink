@@ -40,7 +40,7 @@ impl CGenerator {
 }
 
 impl Generator for CGenerator {
-    fn generate_code(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
+    fn generate_messages(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
         let declarations = messages
             .iter()
             .map(|msg| CGenerator::declare_struct(msg))

@@ -26,9 +26,9 @@ fn main() -> Result<(), Vec<String>> {
     let messages = parser::parse_toml(&contents)?;
 
     let files = match lang {
-        "python" => PythonGenerator::generate_code(messages),
-        "C" => CGenerator::generate_code(messages),
-        "CPP" => CPPGenerator::generate_code(messages),
+        "python" => PythonGenerator::generate_messages(messages),
+        "C" => CGenerator::generate_messages(messages),
+        "CPP" => CPPGenerator::generate_messages(messages),
         _ => panic!("{} not supported!", lang),
     };
 

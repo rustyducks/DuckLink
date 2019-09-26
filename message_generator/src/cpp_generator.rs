@@ -4,8 +4,11 @@ use crate::message::{MsgSpec, Type};
 pub struct CPPGenerator;
 
 impl CPPGenerator {
-    const HEADER: &'static str = "#ifndef MESSAGES_H\n#define MESSAGES_H\n\n#include <stdint.h>\n#include <string.h>\n#include \"Duckmsg.h\"";
-    const FOOTER: &'static str = "#endif    // MESSAGES_H";
+    const HEADER_H: &'static str = "#ifndef MESSAGES_H\n#define MESSAGES_H\n\n#include <stdint.h>\n#include <string.h>\n#include \"Duckmsg.h\"";
+    const FOOTER_H: &'static str = "#endif    // MESSAGES_H";
+
+    const HEADER_CPP: &'static str = "#include \"messages.h\"";
+    const FOOTER_CPP: &'static str = "";
 
     fn declare_class(msg: &MsgSpec) -> String {
         let vars = msg
@@ -20,10 +23,6 @@ impl CPPGenerator {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let msg_id = format!("  uint8_t _id;");
-
-        let constructor = CPPGenerator::constructor(msg);
-
         let getsets = msg
             .fields
             .iter()
@@ -31,9 +30,60 @@ impl CPPGenerator {
             .collect::<Vec<String>>()
             .join("\n\n");
 
-        let get_id = "  uint8_t get_id(){ return _id; }";
+        let msg_size: usize = msg.get_size() + 6; // 2 start bytes, 1 byte for the ID, 1 for the length, ..., 2 for the checksum
 
-        let code = format!("class {name}: public DuckMsg {{\npublic:\n{constructor}\n\n{getid}\n\n{getsets}\n\nprivate:\n{id}\n{vars}\n}};", name=msg.name, constructor=constructor, getid=get_id, getsets=getsets, id=msg_id, vars=vars);
+        let code = format!(
+            "class {name}: public DuckMsg {{\npublic:\n  \
+             const size_t SIZE = {size};\n  \
+             const uint8_t ID = {id};\n\n  \
+             {name}();\n\n  \
+             void to_bytes(uint8_t *buffer);\n\n\
+             {getsets}\n\n\
+             private:\n\
+             {vars}\n}};",
+            name = msg.name,
+            size = msg_size,
+            id = msg.id,
+            getsets = getsets,
+            vars = vars
+        );
+
+        code
+    }
+
+    fn serialise_var(name: &str, ty: &Type) -> String {
+        format!(
+            "  memcpy(buffer+offset, &_{name}, {size});\n  \
+             offset += SIZE;",
+            name = name,
+            size = ty.get_size()
+        )
+    }
+
+    fn to_bytes(msg: &MsgSpec) -> String {
+        let serialisations = msg
+            .fields
+            .iter()
+            .map(|field| CPPGenerator::serialise_var(field.name.as_ref(), &field.t))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let code = format!(
+            "void {name}::to_bytes(uint8_t *buffer) {{\n  \
+             int offset = 0;\n  \
+             buffer[offset++] = 0xFF;\n  \
+             buffer[offset++] = 0xFF;\n  \
+             buffer[offset++] = ID;\n  \
+             buffer[offset++] = {lenght};\n\
+             {serialisations}\n  \
+             int16_t checksum = compute_cheksum(buffer+2, {lenght});\n  \
+             buffer[offset++] = checksum & 0XFF;\n  \
+             buffer[offset++] = (checksum>>8) & 0XFF;\n\
+             }}",
+            name = msg.name,
+            serialisations = serialisations,
+            lenght = msg.get_size() + 2
+        );
 
         code
     }
@@ -65,14 +115,6 @@ impl CPPGenerator {
     }
 
     fn make_get_set(name: &str, ty: &Type) -> String {
-        // let setter = match ty {
-        //     Type::CHARS(_) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}={name}", name=name),
-        //     Type::I8(b)|Type::I16(b)|Type::I32(b)|
-        //     Type::U8(b)|Type::U16(b)|Type::U32(b)
-        //         => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min}, {name}, {max})", name=name, min=b.min, max=b.max),
-        //         => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min}, {name}, {max})", name=name, min=b.min, max=b.max),
-        // };
-
         let setter = match ty {
             Type::CHARS(size) => format!(
                 "  void set_{name}({t} {name}) {{\n    strncpy(_{name}, {name}, {size});\n  }}",
@@ -112,20 +154,18 @@ impl CPPGenerator {
 
     fn init_variable(name: &str, ty: &Type) -> String {
         match ty {
-            Type::I8(_b) => format!("    _{} = 0;", name),
-            Type::I16(_b) => format!("    _{} = 0;", name),
-            Type::I32(_b) => format!("    _{} = 0;", name),
-            Type::U8(_b) => format!("    _{} = 0;", name),
-            Type::U16(_b) => format!("    _{} = 0;", name),
-            Type::U32(_b) => format!("    _{} = 0;", name),
-            Type::F32(_b) => format!("    _{} = 0;", name),
-            Type::CHARS(_size) => format!("    _{}[0] = \'\\0\';", name),
+            Type::I8(_b) => format!("  _{} = 0;", name),
+            Type::I16(_b) => format!("  _{} = 0;", name),
+            Type::I32(_b) => format!("  _{} = 0;", name),
+            Type::U8(_b) => format!("  _{} = 0;", name),
+            Type::U16(_b) => format!("  _{} = 0;", name),
+            Type::U32(_b) => format!("  _{} = 0;", name),
+            Type::F32(_b) => format!("  _{} = 0;", name),
+            Type::CHARS(_size) => format!("  _{}[0] = \'\\0\';", name),
         }
     }
 
     fn constructor(msg: &MsgSpec) -> String {
-        let init_id = format!("    _id = {};", msg.id);
-
         let vars = msg
             .fields
             .iter()
@@ -134,9 +174,8 @@ impl CPPGenerator {
             .join("\n");
 
         let code = format!(
-            "  {name}() {{\n{id}\n{vars}\n  }}",
+            "{name}::{name}() {{\n{vars}\n}}",
             name = msg.name,
-            id = init_id,
             vars = vars
         );
 
@@ -145,20 +184,42 @@ impl CPPGenerator {
 }
 
 impl Generator for CPPGenerator {
-    fn generate_code(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
+    fn generate_messages(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
         let declarations = messages
             .iter()
             .map(|msg| CPPGenerator::declare_class(msg))
             .collect::<Vec<String>>()
             .join("\n\n\n");
 
-        let code = format!(
+        let header = format!(
             "{}\n\n{}\n\n{}",
-            CPPGenerator::HEADER,
+            CPPGenerator::HEADER_H,
             declarations,
-            CPPGenerator::FOOTER
+            CPPGenerator::FOOTER_H
         );
 
-        vec![("messages.h".to_string(), code)]
+        let serialisations = messages
+            .iter()
+            .map(|msg| {
+                format!(
+                    "{}\n\n{}",
+                    CPPGenerator::constructor(msg),
+                    CPPGenerator::to_bytes(msg)
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n\n\n");
+
+        let source = format!(
+            "{}\n\n{}\n\n{}",
+            CPPGenerator::HEADER_CPP,
+            serialisations,
+            CPPGenerator::FOOTER_CPP
+        );
+
+        vec![
+            ("messages.h".to_string(), header),
+            ("messages.cpp".to_string(), source),
+        ]
     }
 }
