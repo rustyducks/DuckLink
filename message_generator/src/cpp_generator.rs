@@ -34,9 +34,10 @@ impl CPPGenerator {
 
         let code = format!(
             "class {name}: public DuckMsg {{\npublic:\n  \
-             const size_t SIZE = {size};\n  \
-             const uint8_t ID = {id};\n\n  \
-             {name}();\n\n  \
+             static const size_t SIZE = {size};\n  \
+             static const uint8_t ID = {id};\n\n  \
+             {name}();\n  \
+             {name}(uint8_t *buffer);\n\n  \
              void to_bytes(uint8_t *buffer);\n\n\
              {getsets}\n\n\
              private:\n\
@@ -51,10 +52,19 @@ impl CPPGenerator {
         code
     }
 
+    fn deserialise_var(name: &str, ty: &Type) -> String {
+        format!(
+            "  memcpy(&_{name}, buffer+offset, {size});\n  \
+             offset += {size};",
+            name = name,
+            size = ty.get_size()
+        )
+    }
+
     fn serialise_var(name: &str, ty: &Type) -> String {
         format!(
             "  memcpy(buffer+offset, &_{name}, {size});\n  \
-             offset += SIZE;",
+             offset += {size};",
             name = name,
             size = ty.get_size()
         )
@@ -135,7 +145,7 @@ impl CPPGenerator {
                 max = b.max
             ),
             Type::F32(b) => format!(
-                "  void set_{name}({t} {name}){{ _{name} = clamp({min}, {name}, {max}); }}",
+                "  void set_{name}({t} {name}){{ _{name} = clamp({min:.2}, {name}, {max:.2}); }}",
                 name = name,
                 t = CPPGenerator::get_type(ty),
                 min = b.min,
@@ -181,6 +191,38 @@ impl CPPGenerator {
 
         code
     }
+
+    fn constructor_from_bytes(msg: &MsgSpec) -> String {
+        let deserialisations = msg
+        .fields
+        .iter()
+        .map(|field| CPPGenerator::deserialise_var(field.name.as_ref(), &field.t))
+        .collect::<Vec<String>>()
+        .join("\n");
+
+        let code = format!(
+            "{name}::{name}(uint8_t *buffer) {{\n  \
+                int offset = 0;\n  \
+                {deser}\n}}",
+            name = msg.name,
+            deser = deserialisations
+        );
+
+        code
+    }
+
+    fn make_msg(messages: &Vec<MsgSpec>) -> String {
+        let ifs = messages.iter()
+                    .map(|msg| {
+                        format!("\tif id=={id} {{\n\t\t\
+                                    return {name}();\n\t\
+                                }}", id=msg.id, name=msg.name)
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n");
+
+        format!("DuckMsg make_msg(uint8_t id) {{\n{}\n}}", ifs)
+    }
 }
 
 impl Generator for CPPGenerator {
@@ -192,7 +234,9 @@ impl Generator for CPPGenerator {
             .join("\n\n\n");
 
         let header = format!(
-            "{}\n\n{}\n\n{}",
+            "{}\n\n\
+            DuckMsg make_msg(uint8_t id);\n\n\
+            {}\n\n{}",
             CPPGenerator::HEADER_H,
             declarations,
             CPPGenerator::FOOTER_H
@@ -202,17 +246,21 @@ impl Generator for CPPGenerator {
             .iter()
             .map(|msg| {
                 format!(
-                    "{}\n\n{}",
+                    "{}\n\n{}\n\n{}",
                     CPPGenerator::constructor(msg),
-                    CPPGenerator::to_bytes(msg)
+                    CPPGenerator::constructor_from_bytes(msg),
+                    CPPGenerator::to_bytes(msg),
                 )
             })
             .collect::<Vec<String>>()
             .join("\n\n\n");
+        
+        let make_msg = CPPGenerator::make_msg(&messages);
 
         let source = format!(
-            "{}\n\n{}\n\n{}",
+            "{}\n\n{}\n\n{}\n\n{}",
             CPPGenerator::HEADER_CPP,
+            make_msg,
             serialisations,
             CPPGenerator::FOOTER_CPP
         );

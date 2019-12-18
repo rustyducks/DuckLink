@@ -17,10 +17,11 @@ use generator::Generator;
 use python_generator::PythonGenerator;
 
 fn main() -> Result<(), Vec<String>> {
-    //let lang = "python";
+    let lang = "python";
     //let lang = "C";
-    let lang = "CPP";
-    let filename = "messages.toml";
+    //let lang = "CPP";
+    //let filename = "messages.toml";
+    let filename = "msgs_test.toml";
     let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
 
     let messages = parser::parse_toml(&contents)?;
@@ -39,10 +40,10 @@ fn main() -> Result<(), Vec<String>> {
             f,
             color::Fg(color::Reset)
         );
-        println!("{}\n", txt);
+        //println!("{}\n", txt);
         let path = format!("../lib/{}/messages/{}", lang, f);
         let mut file = File::create(path).map_err(|e| {
-            println!("{}", e);
+            //println!("{}", e);
             vec!["Fail to create file!".to_string()]
         })?;
         file.write_all(&txt.into_bytes())

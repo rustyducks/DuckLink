@@ -4,10 +4,12 @@ use crate::message::{MsgSpec, Type};
 pub struct PythonGenerator;
 
 impl PythonGenerator {
-    const HEADER: &'static str = "from duckmsg import DuckMsg, clamp";
+    const HEADER: &'static str = "from duckmsg import DuckMsg, clamp\n\
+                                  import bitstring";
 
     fn declare_class(msg: &MsgSpec) -> String {
-        let msg_id = format!("\t\tself.id = {}", msg.id);
+        let msg_id = format!("\tID = {}", msg.id);
+        let msg_size = format!("\tSIZE = {}", msg.get_size() + 6);
 
         let declarations = if msg.fields.len() == 0 {
             "\t\tpass".to_string()
@@ -31,9 +33,14 @@ impl PythonGenerator {
             .collect::<Vec<String>>()
             .join("\n\n");
 
+        let serialize = PythonGenerator::serialize(msg);
+        let deserialize = PythonGenerator::deserialize(msg);
+
+        let repr = PythonGenerator::repr(msg);
+
         let code = format!(
-            "class {}(DuckMsg):\n\tdef __init__(self):\n{}\n{}\n\n{}",
-            msg.name, msg_id, declarations, getters
+            "class {name}(DuckMsg):\n{id}\n{size}\n\tdef __init__(self):\n{dec}\n\n{serialize}\n\n{deserialize}\n\n{repr}\n\n{gets}",
+            name=msg.name, id=msg_id, size=msg_size, dec=declarations, serialize=serialize, deserialize=deserialize, repr=repr, gets=getters
         );
 
         code
@@ -58,10 +65,103 @@ impl PythonGenerator {
             Type::CHARS(_) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}={name}", name=name),
             Type::I8(b)|Type::I16(b)|Type::I32(b)|
             Type::U8(b)|Type::U16(b)|Type::U32(b)
-                => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min}, {name}, {max})", name=name, min=b.min, max=b.max),
-            Type::F32(b) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min}, {name}, {max})", name=name, min=b.min, max=b.max),
+                => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min:.1}, {name}, {max:.1})", name=name, min=b.min, max=b.max),
+            Type::F32(b) => format!("\t@{name}.setter\n\tdef {name}(self, {name}):\n\t\tself._{name}=clamp({min:.1}, {name}, {max:.1})", name=name, min=b.min, max=b.max),
         };
         format!("{}\n\n{}", getter, setter)
+    }
+
+    fn repr(msg: &MsgSpec) -> String {
+        let fields = msg.fields
+            .iter()
+            .map(|field| {
+                format!("'{name} : {{}}'.format(self._{name})", name=field.name)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+        
+        format!("\tdef __repr__(self):\n\t\t\
+                    return '\\n'.join([{}])",
+            fields)
+    }
+
+    fn serialize(msg: &MsgSpec) -> String {
+        
+        let fields = msg.fields
+            .iter()
+            .map(|field| {
+                format!("self.{}", field.name)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let bit_format = msg.fields
+            .iter()
+            .map(|field| {
+                let bitype = match field.t {
+                    Type::I8(_) => "intle:8".to_string(),
+                    Type::I16(_) => "intle:16".to_string(),
+                    Type::I32(_) => "intle:32".to_string(),
+                    Type::U8(_)=> "uintle:8".to_string(),
+                    Type::U16(_) => "uintle:16".to_string(),
+                    Type::U32(_) => "uintle:32".to_string(),
+                    Type::F32(_) => "floatle:32".to_string(),
+                    Type::CHARS(s) => format!("bytes:{}", s),
+                };
+                format!("{}", bitype)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        format!("\tdef serialize(self):\n\t\t\
+                        return bitstring.pack('{bit_format}', {fields})",
+                    fields=fields, bit_format=bit_format)
+    }
+
+    fn deserialize(msg: &MsgSpec) -> String {
+        
+        let fields = msg.fields
+            .iter()
+            .map(|field| {
+                format!("self.{}", field.name)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let bit_format = msg.fields
+            .iter()
+            .map(|field| {
+                let bitype = match field.t {
+                    Type::I8(_) => "intle:8".to_string(),
+                    Type::I16(_) => "intle:16".to_string(),
+                    Type::I32(_) => "intle:32".to_string(),
+                    Type::U8(_)=> "uintle:8".to_string(),
+                    Type::U16(_) => "uintle:16".to_string(),
+                    Type::U32(_) => "uintle:32".to_string(),
+                    Type::F32(_) => "floatle:32".to_string(),
+                    Type::CHARS(s) => format!("bytes:{}", s),
+                };
+                format!("{}", bitype)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        format!("\tdef deserialize(self, bytes):\n\t\t\
+                    s = bitstring.BitStream(bytes)\n\t\t\
+                    {fields} = s.unpack('{bit_format}')",
+                    fields=fields, bit_format=bit_format)
+    }
+
+    fn message_dict(messages: &Vec<MsgSpec>) -> String{
+        let body = messages
+            .iter()
+            .map(|msg| {
+                format!("\t{id} : {name},", id=msg.id, name=msg.name)
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        
+            format!("MESSAGES = {{\n{}\n}}", body)
     }
 }
 
@@ -72,8 +172,10 @@ impl Generator for PythonGenerator {
             .map(|msg| PythonGenerator::declare_class(msg))
             .collect::<Vec<String>>()
             .join("\n\n");
+        
+        let dict = PythonGenerator::message_dict(&messages);
 
-        let code = format!("{}\n\n{}\n", PythonGenerator::HEADER, classes);
+        let code = format!("{}\n\n{}\n\n{}\n", PythonGenerator::HEADER, classes, dict);
 
         vec![("messages.py".to_string(), code)]
     }
