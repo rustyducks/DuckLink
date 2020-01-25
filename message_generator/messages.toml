@@ -1,0 +1,21 @@
+# messages definition
+
+[up.OdomReport]
+x  = "f32"
+y  = "f32"
+theta = "f32"
+
+
+[up.SpeedReport]
+vx = "i8"
+vy = {type="i16", max=10, min=-2}
+vtheta = {type="u8", max=10, min=0}
+
+[up.Plop]
+decimal = {type="f32", max=1000.0, min=-30.0}
+name = {type="chars", size=12}
+entier = {type="i16"}
+
+[interMCU.Uid]
+uid = "u32"
+

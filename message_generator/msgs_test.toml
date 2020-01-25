@@ -1,0 +1,34 @@
+# messages definition
+
+[up.OdomReport]
+x  = "f32"
+y  = "f32"
+theta = "f32"
+
+
+[up.SpeedReport]
+vx = "f32"
+vy = "f32"
+vtheta = "f32"
+
+[up.MotorsSpeedReport]
+v1 = "f32"
+v2 = "f32"
+v3 = "f32"
+
+# [down.Reset]
+
+
+[down.SpeedCommand]
+vx = "f32"
+vy = "f32"
+vtheta = "f32"
+
+[down.PIDGains]
+kp = "f32"
+ki = "f32"
+kd = "f32"
+
+[interMCU.UID]
+uid = "u32"
+
