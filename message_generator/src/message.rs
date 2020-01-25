@@ -90,7 +90,14 @@ pub enum Type {
 }
 
 impl MsgSpec {
-    pub fn get_size(&self) -> usize {
+    /// Return needed buffer size for that message.
+    /// It includes 2 start bytes, 1 msg_id byte, 1 msg_len byte, and 2 checksum bytes.
+    pub fn get_buffer_size(&self) -> usize {
+        self.get_payload_size() + 6
+    }
+
+    /// Returns the payload size. This does NOT include msg id, len and payload.
+    pub fn get_payload_size(&self) -> usize {
         self.fields.iter().map(|f| f.t.get_size()).sum()
     }
 }

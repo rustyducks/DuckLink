@@ -30,7 +30,7 @@ impl CPPGenerator {
             .collect::<Vec<String>>()
             .join("\n\n");
 
-        let msg_size: usize = msg.get_size() + 6; // 2 start bytes, 1 byte for the ID, 1 for the length, ..., 2 for the checksum
+        let msg_size: usize = msg.get_buffer_size(); // 2 start bytes, 1 byte for the ID, 1 for the length, ..., 2 for the checksum
 
         let code = format!(
             "class {name}: public DuckMsg {{\npublic:\n  \
@@ -92,7 +92,7 @@ impl CPPGenerator {
              }}",
             name = msg.name,
             serialisations = serialisations,
-            lenght = msg.get_size() + 2
+            lenght = msg.get_payload_size() + 2
         );
 
         code
@@ -226,7 +226,7 @@ impl CPPGenerator {
 }
 
 impl Generator for CPPGenerator {
-    fn generate_messages(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
+    fn generate_messages(messages: &Vec<MsgSpec>, UID: u32) -> Vec<(String, String)> {
         let declarations = messages
             .iter()
             .map(|msg| CPPGenerator::declare_class(msg))
@@ -255,7 +255,7 @@ impl Generator for CPPGenerator {
             .collect::<Vec<String>>()
             .join("\n\n\n");
         
-        let make_msg = CPPGenerator::make_msg(&messages);
+        let make_msg = CPPGenerator::make_msg(messages);
 
         let source = format!(
             "{}\n\n{}\n\n{}\n\n{}",

@@ -25,14 +25,7 @@ impl CGenerator {
             .collect::<Vec<String>>()
             .join("\n");
 
-// let getsets = msg
-//     .fields
-//     .iter()
-//     .map(|field| CGenerator::make_get_set(field.name.as_ref(), &field.t))
-//     .collect::<Vec<String>>()
-//     .join("\n\n");
-
-        let size = msg.get_size() + 6;  // 0XFF, 0XFF (2), id (1), len (1), ..., chk (2)
+        let size = msg.get_buffer_size();
 
         let code = format!(
             "#define SIZE_{name} {size}\n\
@@ -84,16 +77,15 @@ impl CGenerator {
              buffer[offset++] = 0xFF;\n  \
              buffer[offset++] = 0xFF;\n  \
              buffer[offset++] = ID_{name};\n  \
-             buffer[offset++] = {lenght};\n\
+             buffer[offset++] = SIZE_{name} - 4;\n\
              {serialisations}\n  \
-             int16_t checksum = compute_cheksum(buffer+2, {lenght});\n  \
+             int16_t checksum = compute_cheksum(buffer+2, SIZE_{name} - 4);\n  \
              buffer[offset++] = checksum & 0XFF;\n  \
              buffer[offset++] = (checksum>>8) & 0XFF;\n\
              }}",
             sname = msg.name.to_snake_case(),
             name = msg.name,
-            serialisations = serialisations,
-            lenght = msg.get_size() + 2
+            serialisations = serialisations
         );
 
         code
@@ -217,21 +209,22 @@ impl CGenerator {
     fn make_msg(messages: &Vec<MsgSpec>) -> String {
         let ifs = messages.iter()
                     .map(|msg| {
-                        format!("\tif(id=={id}) {{\n\t\t\
-                                {sname}_from_bytes(msg_u, buffer);\n\t\
+                        format!("  if(id=={id}) {{\n    \
+                                {sname}_from_bytes(&tmsg->msg, buffer);\n  \
                                 }}", id=msg.id, sname=msg.name.to_snake_case())
                     })
                     .collect::<Vec<String>>()
                     .join("\n");
 
-        format!("void msg_from_bytes(union Message_t* msg_u, uint8_t* buffer, uint8_t id) {{\n\
-                {}\t\
-                \n}}", ifs)
+        format!("void msg_from_bytes(struct TagMessage* tmsg, uint8_t* buffer, uint8_t id) {{\n\
+                {}\n  \
+                tmsg->tag = id;\n\
+                }}", ifs)
     }
 }
 
 impl Generator for CGenerator {
-    fn generate_messages(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
+    fn generate_messages(messages: &Vec<MsgSpec>, UID: u32) -> Vec<(String, String)> {
         let declarations = messages
             .iter()
             .map(|msg| CGenerator::declare_class(msg))
@@ -243,42 +236,54 @@ impl Generator for CGenerator {
             .map(|msg| format!("  struct {} {};", msg.name, msg.name.to_snake_case()))
             .collect::<Vec<String>>()
             .join("\n");
+        
         let union_t = format!("union Message_t {{\n{}\n}};", union_fields);
+
+        let max_size : usize = messages.iter().map(|msg| msg.get_buffer_size()).max().unwrap();
 
         let header = format!(
             "{}\n\n\
+            #define UID {}\n\n\
             union Message_t;\n\n\
+            struct TagMessage;\n\n\
             uint16_t compute_cheksum(uint8_t *buffer, int len);\n\n\
+            #define MAX_MSG_BUFFER_SIZE {}\n\n\
             {}\n\n\
-            {}\n\
-            void make_msg(union Message_t* msg, uint8_t id);\n\n\
-            void msg_from_bytes(union Message_t* msg_u, uint8_t* buffer, uint8_t id);\n\n\
+            {}\n\n\
+            struct TagMessage {{\n  uint8_t tag;\n  union Message_t msg;\n}};\n\n\
+            void msg_from_bytes(struct TagMessage* tmsg, uint8_t* buffer, uint8_t id);\n\n\
             {}",
             CGenerator::HEADER_H,
+            UID,
+            max_size,
             declarations,
             union_t,
             CGenerator::FOOTER_H
         );
-
+//            void make_msg(struct TagMessage* tmsg, uint8_t id);\n\n\
 
         let serialisations = messages
             .iter()
             .map(|msg| {
                 format!(
                     "{tb}\n\n{fb}",
-                    fb=CGenerator::constructor_from_bytes(msg),
                     tb=CGenerator::to_bytes(msg),
+                    fb=CGenerator::constructor_from_bytes(msg),
                 )
             })
             .collect::<Vec<String>>()
             .join("\n\n\n");
         
-        let make_msg = CGenerator::make_msg(&messages);
+        let make_msg = CGenerator::make_msg(messages);
 
-        let check = "uint16_t compute_cheksum(uint8_t *buffer, int len) {\n\t\
-                        (void)buffer;\n\t\
-                        (void)len;\n\t\
-                        return 10;\n\
+        let check = "uint16_t compute_cheksum(uint8_t *buffer, int len) {\n  \
+                        uint8_t ck_a, ck_b = 0;\n  \
+                        for(int i=0; i<len; i++) {\n    \
+                          ck_a = (ck_a + buffer[i]);       // % 256 by overflow\n    \
+                          ck_b = (ck_b + ck_a);    // % 256 by overflow\n  \
+                        }\n  \
+                        uint16_t ck = (ck_a << 8) | ck_b;\n  \
+                        return ck;\n\
                     }";
 
         let source = format!(

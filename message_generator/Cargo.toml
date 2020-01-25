@@ -11,3 +11,6 @@ toml = "0.5.3"
 serde = "1.0.101"
 termion = "1.5.3"
 Inflector = "0.11.4"
+clap = "2.33.0"
+rand = "0.7.2"
+

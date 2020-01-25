@@ -9,7 +9,7 @@ impl PythonGenerator {
 
     fn declare_class(msg: &MsgSpec) -> String {
         let msg_id = format!("\tID = {}", msg.id);
-        let msg_size = format!("\tSIZE = {}", msg.get_size() + 6);
+        let msg_size = format!("\tSIZE = {}", msg.get_buffer_size());
 
         let declarations = if msg.fields.len() == 0 {
             "\t\tpass".to_string()
@@ -114,7 +114,7 @@ impl PythonGenerator {
             .join(", ");
 
         format!("\tdef serialize(self):\n\t\t\
-                        return bitstring.pack('{bit_format}', {fields})",
+                        return bitstring.pack('uintle:8, uintle:8, {bit_format}', self.ID, self.SIZE-4, {fields})",
                     fields=fields, bit_format=bit_format)
     }
 
@@ -166,16 +166,18 @@ impl PythonGenerator {
 }
 
 impl Generator for PythonGenerator {
-    fn generate_messages(messages: Vec<MsgSpec>) -> Vec<(String, String)> {
+    fn generate_messages(messages: &Vec<MsgSpec>, uid: u32) -> Vec<(String, String)> {
         let classes = messages
             .iter()
             .map(|msg| PythonGenerator::declare_class(msg))
             .collect::<Vec<String>>()
             .join("\n\n");
         
-        let dict = PythonGenerator::message_dict(&messages);
+        let dict = PythonGenerator::message_dict(messages);
 
-        let code = format!("{}\n\n{}\n\n{}\n", PythonGenerator::HEADER, classes, dict);
+        let uid_code = format!("UID = {}", uid);
+
+        let code = format!("{}\n\n{}\n\n{}\n\n{}\n", PythonGenerator::HEADER, uid_code, classes, dict);
 
         vec![("messages.py".to_string(), code)]
     }
