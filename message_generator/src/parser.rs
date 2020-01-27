@@ -24,7 +24,7 @@ pub fn parse_toml(contents: &str) -> Result<Vec<MsgSpec>, Vec<String>> {
     }
 
     for (i, msg) in messages.iter_mut().enumerate() {
-        msg.id = i;
+        msg.id = i + 1; // id 0 is reserved to UID message.
     }
 
     Ok(messages)
@@ -70,6 +70,9 @@ fn get_messages(class: &str, msg_name: &str, msg_table: &Value) -> Option<(MsgSp
             .partition(Result::is_ok);
         let fields: Vec<_> = fields.into_iter().map(Result::unwrap).collect();
         let errs: Vec<_> = errs.into_iter().map(Result::unwrap_err).collect();
+        if fields.len() == 0 {
+            panic!(format!("Message {} shall have at least one member.", name));
+        }
 
         Some((
             MsgSpec {

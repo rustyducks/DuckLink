@@ -100,6 +100,17 @@ impl MsgSpec {
     pub fn get_payload_size(&self) -> usize {
         self.fields.iter().map(|f| f.t.get_size()).sum()
     }
+
+    pub fn uid_msg() -> MsgSpec {
+        MsgSpec {
+            name: "InterMcuUid".to_string(),
+            id: 0,
+            fields: vec![Field {
+                name: "uid".to_string(),
+                t: Type::U32(bounds!(u32)),
+            }],
+        }
+    }
 }
 
 impl Type {

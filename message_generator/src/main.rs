@@ -43,7 +43,8 @@ fn main() -> Result<(), Vec<String>> {
     let msg_file = matches.value_of("FILE").unwrap();
 
     let contents = fs::read_to_string(msg_file).expect("Something went wrong reading the file");
-    let messages = parser::parse_toml(&contents)?;
+    let mut messages = parser::parse_toml(&contents)?;
+    messages.push(message::MsgSpec::uid_msg());
 
     let mut rng = rand::thread_rng();
     let UID: u32 = rng.gen();

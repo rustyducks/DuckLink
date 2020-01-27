@@ -11,20 +11,17 @@ impl PythonGenerator {
         let msg_id = format!("\tID = {}", msg.id);
         let msg_size = format!("\tSIZE = {}", msg.get_buffer_size());
 
-        let declarations = if msg.fields.len() == 0 {
-            "\t\tpass".to_string()
-        } else {
-            msg.fields
-                .iter()
-                .map(|field| {
-                    format!(
-                        "\t\t{}",
-                        PythonGenerator::init_variable(field.name.as_ref(), &field.t)
-                    )
-                })
-                .collect::<Vec<String>>()
-                .join("\n")
-        };
+        let declarations = msg
+            .fields
+            .iter()
+            .map(|field| {
+                format!(
+                    "\t\t{}",
+                    PythonGenerator::init_variable(field.name.as_ref(), &field.t)
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
 
         let getters = msg
             .fields

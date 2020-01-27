@@ -28,7 +28,3 @@ vtheta = "f32"
 kp = "f32"
 ki = "f32"
 kd = "f32"
-
-[interMCU.UID]
-uid = "u32"
-

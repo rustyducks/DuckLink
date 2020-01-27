@@ -47,12 +47,21 @@ class SerialCom:
                 self._rcv_state = SerialCom.RcvState.MsgLen
             elif self._rcv_state == SerialCom.RcvState.MsgLen:
                 payload = self.serial.read(self._msg_len)       # read message content
-                msgClass = messages.MESSAGES[self._msg_id]
-                msg = msgClass()
-                msg.deserialize(payload)
-                self._nb_bytes_expected = 1
-                self._rcv_state = SerialCom.RcvState.Idle
-                return msg                 # We are now synchronised !
+                if self.control_checksum(self._msg_id, self._msg_len, payload):
+                    try:
+                        msgClass = messages.MESSAGES[self._msg_id]
+                    except KeyError:
+                        print("message id {} unknown!".format(self._msg_id))
+                    msg = msgClass()
+                    msg.deserialize(payload)
+                    self._nb_bytes_expected = 1
+                    self._rcv_state = SerialCom.RcvState.Idle
+                    if self._msg_id == 0:   # UID message
+                        if not msg.uid == messages.UID:
+                            raise(Exception("Warning: Ducklink versions differs : remote is {}, local is {}".format(msg.uid, messages.UID)))
+                    return msg                 # We are now synchronised !
+                else:
+                    return None
 
     """
     Blocking function until a message is received
@@ -68,21 +77,33 @@ class SerialCom:
         while self.serial.in_waiting > 0:
             self.serial.read(self.serial.in_waiting)
             
-            
-    def calculate_checksum(self, msg):
+    @staticmethod
+    def calculate_checksum(msg_bytes):
         ck_a = 0
         ck_b = 0
-        for c in msg.tobytes():
+        for c in msg_bytes:
             ck_a = (ck_a + c) % 256
             ck_b = (ck_b + ck_a) % 256
         ck = (ck_a<<8) | ck_b
         return ck
+    
+    @staticmethod
+    def control_checksum(msg_id, msg_len, payload):
+        # reconstruct the message from ID to payload(excluding checksum)
+        to_check = chr(msg_id).encode() + chr(msg_len).encode() + payload[:-2]
+        ck = SerialCom.calculate_checksum(to_check)
+        s = bitstring.BitStream(payload[-2:])
+        rcv_ck, = s.unpack('uintle:16')         # coma to unpack the list as tuple
+        if ck == rcv_ck:
+            return True
+        else:
+            return False
 
 
     def send_msg(self, msg):
         start = bitstring.pack('uintle:16', 0XFFFF)
         payload = msg.serialize()
-        chk = self.calculate_checksum(payload)
+        chk = self.calculate_checksum(payload.tobytes())
         msg_stream = start + payload + bitstring.pack('uintle:16', chk)
         msg_bytes = msg_stream.tobytes()
         self.serial.write(msg_bytes)

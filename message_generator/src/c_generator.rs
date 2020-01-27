@@ -79,7 +79,7 @@ impl CGenerator {
              buffer[offset++] = ID_{name};\n  \
              buffer[offset++] = SIZE_{name} - 4;\n\
              {serialisations}\n  \
-             int16_t checksum = compute_cheksum(buffer+2, SIZE_{name} - 4);\n  \
+             uint16_t checksum = compute_cheksum(buffer+2, SIZE_{name} - 4);\n  \
              buffer[offset++] = checksum & 0XFF;\n  \
              buffer[offset++] = (checksum>>8) & 0XFF;\n\
              }}",
