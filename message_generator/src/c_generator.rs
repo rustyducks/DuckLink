@@ -6,7 +6,8 @@ use inflector::Inflector;
 pub struct CGenerator;
 
 impl CGenerator {
-    const HEADER_H: &'static str = "#ifndef MESSAGES_H\n#define MESSAGES_H\n\n#include <stdint.h>\n#include <string.h>";
+    const HEADER_H: &'static str =
+        "#ifndef MESSAGES_H\n#define MESSAGES_H\n\n#include <stdint.h>\n#include <string.h>";
     const FOOTER_H: &'static str = "#endif    // MESSAGES_H";
 
     const HEADER_CPP: &'static str = "#include \"messages.h\"";
@@ -29,14 +30,14 @@ impl CGenerator {
 
         let code = format!(
             "#define SIZE_{name} {size}\n\
-            #define  ID_{name} {id}\n\n\
-            struct {name}{{\n\
+             #define  ID_{name} {id}\n\n\
+             struct {name}{{\n\
              {vars}\n}};\n\n\
              void {sname}_from_bytes(union Message_t* msg_u, uint8_t *buffer);\n\
              void {sname}_to_bytes(struct {name}* msg, uint8_t *buffer);\n\n\
              ",
-            size=size,
-            id=msg.id,
+            size = size,
+            id = msg.id,
             name = msg.name,
             sname = msg.name.to_snake_case(),
             vars = vars
@@ -187,17 +188,17 @@ impl CGenerator {
 
     fn constructor_from_bytes(msg: &MsgSpec) -> String {
         let deserialisations = msg
-        .fields
-        .iter()
-        .map(|field| CGenerator::deserialise_var(field.name.as_ref(), &field.t))
-        .collect::<Vec<String>>()
-        .join("\n");
+            .fields
+            .iter()
+            .map(|field| CGenerator::deserialise_var(field.name.as_ref(), &field.t))
+            .collect::<Vec<String>>()
+            .join("\n");
 
         let code = format!(
             "void {sname}_from_bytes(union Message_t* msg_u, uint8_t *buffer) {{\n  \
-                struct {name}* msg = (struct {name}*)msg_u;\n  \
-                int offset = 0;\n\
-                {deser}\n}}",
+             struct {name}* msg = (struct {name}*)msg_u;\n  \
+             int offset = 0;\n\
+             {deser}\n}}",
             sname = msg.name.to_snake_case(),
             name = msg.name,
             deser = deserialisations
@@ -207,19 +208,27 @@ impl CGenerator {
     }
 
     fn make_msg(messages: &Vec<MsgSpec>) -> String {
-        let ifs = messages.iter()
-                    .map(|msg| {
-                        format!("  if(id=={id}) {{\n    \
-                                {sname}_from_bytes(&tmsg->msg, buffer);\n  \
-                                }}", id=msg.id, sname=msg.name.to_snake_case())
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n");
+        let ifs = messages
+            .iter()
+            .map(|msg| {
+                format!(
+                    "  if(id=={id}) {{\n    \
+                     {sname}_from_bytes(&tmsg->msg, buffer);\n  \
+                     }}",
+                    id = msg.id,
+                    sname = msg.name.to_snake_case()
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
 
-        format!("void msg_from_bytes(struct TagMessage* tmsg, uint8_t* buffer, uint8_t id) {{\n\
-                {}\n  \
-                tmsg->tag = id;\n\
-                }}", ifs)
+        format!(
+            "void msg_from_bytes(struct TagMessage* tmsg, uint8_t* buffer, uint8_t id) {{\n\
+             {}\n  \
+             tmsg->tag = id;\n\
+             }}",
+            ifs
+        )
     }
 }
 
@@ -230,29 +239,33 @@ impl Generator for CGenerator {
             .map(|msg| CGenerator::declare_class(msg))
             .collect::<Vec<String>>()
             .join("\n\n\n");
-        
+
         let union_fields = messages
             .iter()
             .map(|msg| format!("  struct {} {};", msg.name, msg.name.to_snake_case()))
             .collect::<Vec<String>>()
             .join("\n");
-        
+
         let union_t = format!("union Message_t {{\n{}\n}};", union_fields);
 
-        let max_size : usize = messages.iter().map(|msg| msg.get_buffer_size()).max().unwrap();
+        let max_size: usize = messages
+            .iter()
+            .map(|msg| msg.get_buffer_size())
+            .max()
+            .unwrap();
 
         let header = format!(
             "{}\n\n\
-            #define UID {}\n\n\
-            union Message_t;\n\n\
-            struct TagMessage;\n\n\
-            uint16_t compute_cheksum(uint8_t *buffer, int len);\n\n\
-            #define MAX_MSG_BUFFER_SIZE {}\n\n\
-            {}\n\n\
-            {}\n\n\
-            struct TagMessage {{\n  uint8_t tag;\n  union Message_t msg;\n}};\n\n\
-            void msg_from_bytes(struct TagMessage* tmsg, uint8_t* buffer, uint8_t id);\n\n\
-            {}",
+             #define UID {}\n\n\
+             union Message_t;\n\n\
+             struct TagMessage;\n\n\
+             uint16_t compute_cheksum(uint8_t *buffer, int len);\n\n\
+             #define MAX_MSG_BUFFER_SIZE {}\n\n\
+             {}\n\n\
+             {}\n\n\
+             struct TagMessage {{\n  uint8_t tag;\n  union Message_t msg;\n}};\n\n\
+             void msg_from_bytes(struct TagMessage* tmsg, uint8_t* buffer, uint8_t id);\n\n\
+             {}",
             CGenerator::HEADER_H,
             UID,
             max_size,
@@ -260,31 +273,32 @@ impl Generator for CGenerator {
             union_t,
             CGenerator::FOOTER_H
         );
-//            void make_msg(struct TagMessage* tmsg, uint8_t id);\n\n\
+        //            void make_msg(struct TagMessage* tmsg, uint8_t id);\n\n\
 
         let serialisations = messages
             .iter()
             .map(|msg| {
                 format!(
                     "{tb}\n\n{fb}",
-                    tb=CGenerator::to_bytes(msg),
-                    fb=CGenerator::constructor_from_bytes(msg),
+                    tb = CGenerator::to_bytes(msg),
+                    fb = CGenerator::constructor_from_bytes(msg),
                 )
             })
             .collect::<Vec<String>>()
             .join("\n\n\n");
-        
+
         let make_msg = CGenerator::make_msg(messages);
 
         let check = "uint16_t compute_cheksum(uint8_t *buffer, int len) {\n  \
-                        uint8_t ck_a, ck_b = 0;\n  \
-                        for(int i=0; i<len; i++) {\n    \
-                          ck_a = (ck_a + buffer[i]);       // % 256 by overflow\n    \
-                          ck_b = (ck_b + ck_a);    // % 256 by overflow\n  \
-                        }\n  \
-                        uint16_t ck = (ck_a << 8) | ck_b;\n  \
-                        return ck;\n\
-                    }";
+                     uint8_t ck_a = 0;\n  \
+                     uint8_t ck_b = 0;\n  \
+                     for(int i=0; i<len; i++) {\n    \
+                     ck_a = (ck_a + buffer[i]);       // % 256 by overflow\n    \
+                     ck_b = (ck_b + ck_a);    // % 256 by overflow\n  \
+                     }\n  \
+                     uint16_t ck = (ck_a << 8) | ck_b;\n  \
+                     return ck;\n\
+                     }";
 
         let source = format!(
             "{}\n\n{}\n\n{}\n\n{}\n\n{}",

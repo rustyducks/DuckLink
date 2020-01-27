@@ -16,7 +16,8 @@ v1 = "f32"
 v2 = "f32"
 v3 = "f32"
 
-# [down.Reset]
+[down.Reset]
+flags = "i8"
 
 
 [down.SpeedCommand]

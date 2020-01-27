@@ -69,37 +69,37 @@ impl PythonGenerator {
     }
 
     fn repr(msg: &MsgSpec) -> String {
-        let fields = msg.fields
+        let fields = msg
+            .fields
             .iter()
-            .map(|field| {
-                format!("'{name} : {{}}'.format(self._{name})", name=field.name)
-            })
+            .map(|field| format!("'{name} : {{}}'.format(self._{name})", name = field.name))
             .collect::<Vec<String>>()
             .join(", ");
-        
-        format!("\tdef __repr__(self):\n\t\t\
-                    return '\\n'.join([{}])",
-            fields)
+
+        format!(
+            "\tdef __repr__(self):\n\t\t\
+             return '\\n'.join([{}])",
+            fields
+        )
     }
 
     fn serialize(msg: &MsgSpec) -> String {
-        
-        let fields = msg.fields
+        let fields = msg
+            .fields
             .iter()
-            .map(|field| {
-                format!("self.{}", field.name)
-            })
+            .map(|field| format!("self.{}", field.name))
             .collect::<Vec<String>>()
             .join(", ");
 
-        let bit_format = msg.fields
+        let bit_format = msg
+            .fields
             .iter()
             .map(|field| {
                 let bitype = match field.t {
                     Type::I8(_) => "intle:8".to_string(),
                     Type::I16(_) => "intle:16".to_string(),
                     Type::I32(_) => "intle:32".to_string(),
-                    Type::U8(_)=> "uintle:8".to_string(),
+                    Type::U8(_) => "uintle:8".to_string(),
                     Type::U16(_) => "uintle:16".to_string(),
                     Type::U32(_) => "uintle:32".to_string(),
                     Type::F32(_) => "floatle:32".to_string(),
@@ -116,23 +116,22 @@ impl PythonGenerator {
     }
 
     fn deserialize(msg: &MsgSpec) -> String {
-        
-        let fields = msg.fields
+        let fields = msg
+            .fields
             .iter()
-            .map(|field| {
-                format!("self.{}", field.name)
-            })
+            .map(|field| format!("self.{}", field.name))
             .collect::<Vec<String>>()
             .join(", ");
 
-        let bit_format = msg.fields
+        let bit_format = msg
+            .fields
             .iter()
             .map(|field| {
                 let bitype = match field.t {
                     Type::I8(_) => "intle:8".to_string(),
                     Type::I16(_) => "intle:16".to_string(),
                     Type::I32(_) => "intle:32".to_string(),
-                    Type::U8(_)=> "uintle:8".to_string(),
+                    Type::U8(_) => "uintle:8".to_string(),
                     Type::U16(_) => "uintle:16".to_string(),
                     Type::U32(_) => "uintle:32".to_string(),
                     Type::F32(_) => "floatle:32".to_string(),
@@ -143,22 +142,23 @@ impl PythonGenerator {
             .collect::<Vec<String>>()
             .join(", ");
 
-        format!("\tdef deserialize(self, bytes):\n\t\t\
-                    s = bitstring.BitStream(bytes)\n\t\t\
-                    {fields} = s.unpack('{bit_format}')",
-                    fields=fields, bit_format=bit_format)
+        format!(
+            "\tdef deserialize(self, bytes):\n\t\t\
+             s = bitstring.BitStream(bytes)\n\t\t\
+             {fields}, = s.unpack('{bit_format}')",
+            fields = fields,
+            bit_format = bit_format
+        )
     }
 
-    fn message_dict(messages: &Vec<MsgSpec>) -> String{
+    fn message_dict(messages: &Vec<MsgSpec>) -> String {
         let body = messages
             .iter()
-            .map(|msg| {
-                format!("\t{id} : {name},", id=msg.id, name=msg.name)
-            })
+            .map(|msg| format!("\t{id} : {name},", id = msg.id, name = msg.name))
             .collect::<Vec<String>>()
             .join("\n");
-        
-            format!("MESSAGES = {{\n{}\n}}", body)
+
+        format!("MESSAGES = {{\n{}\n}}", body)
     }
 }
 
@@ -169,12 +169,18 @@ impl Generator for PythonGenerator {
             .map(|msg| PythonGenerator::declare_class(msg))
             .collect::<Vec<String>>()
             .join("\n\n");
-        
+
         let dict = PythonGenerator::message_dict(messages);
 
         let uid_code = format!("UID = {}", uid);
 
-        let code = format!("{}\n\n{}\n\n{}\n\n{}\n", PythonGenerator::HEADER, uid_code, classes, dict);
+        let code = format!(
+            "{}\n\n{}\n\n{}\n\n{}\n",
+            PythonGenerator::HEADER,
+            uid_code,
+            classes,
+            dict
+        );
 
         vec![("messages.py".to_string(), code)]
     }

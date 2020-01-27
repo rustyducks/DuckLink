@@ -194,16 +194,16 @@ impl CPPGenerator {
 
     fn constructor_from_bytes(msg: &MsgSpec) -> String {
         let deserialisations = msg
-        .fields
-        .iter()
-        .map(|field| CPPGenerator::deserialise_var(field.name.as_ref(), &field.t))
-        .collect::<Vec<String>>()
-        .join("\n");
+            .fields
+            .iter()
+            .map(|field| CPPGenerator::deserialise_var(field.name.as_ref(), &field.t))
+            .collect::<Vec<String>>()
+            .join("\n");
 
         let code = format!(
             "{name}::{name}(uint8_t *buffer) {{\n  \
-                int offset = 0;\n  \
-                {deser}\n}}",
+             int offset = 0;\n  \
+             {deser}\n}}",
             name = msg.name,
             deser = deserialisations
         );
@@ -212,14 +212,19 @@ impl CPPGenerator {
     }
 
     fn make_msg(messages: &Vec<MsgSpec>) -> String {
-        let ifs = messages.iter()
-                    .map(|msg| {
-                        format!("\tif id=={id} {{\n\t\t\
-                                    return {name}();\n\t\
-                                }}", id=msg.id, name=msg.name)
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n");
+        let ifs = messages
+            .iter()
+            .map(|msg| {
+                format!(
+                    "\tif id=={id} {{\n\t\t\
+                     return {name}();\n\t\
+                     }}",
+                    id = msg.id,
+                    name = msg.name
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
 
         format!("DuckMsg make_msg(uint8_t id) {{\n{}\n}}", ifs)
     }
@@ -235,8 +240,8 @@ impl Generator for CPPGenerator {
 
         let header = format!(
             "{}\n\n\
-            DuckMsg make_msg(uint8_t id);\n\n\
-            {}\n\n{}",
+             DuckMsg make_msg(uint8_t id);\n\n\
+             {}\n\n{}",
             CPPGenerator::HEADER_H,
             declarations,
             CPPGenerator::FOOTER_H
@@ -254,7 +259,7 @@ impl Generator for CPPGenerator {
             })
             .collect::<Vec<String>>()
             .join("\n\n\n");
-        
+
         let make_msg = CPPGenerator::make_msg(messages);
 
         let source = format!(

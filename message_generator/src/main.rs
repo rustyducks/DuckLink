@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use termion::color;
 extern crate clap;
-use clap::{Arg, App};
+use clap::{App, Arg};
 use rand::Rng;
 
 mod c_generator;
@@ -20,25 +20,27 @@ use generator::Generator;
 use python_generator::PythonGenerator;
 
 fn main() -> Result<(), Vec<String>> {
-
     let matches = App::new("Ducklink message generator")
-                          .version("0.1")
-                          .author("Fabien B. <fabien.bonneval@gmail.com>")
-                          .about("Generate messages according to input toml file")
-                          .arg(Arg::with_name("FILE")
-                               .help("set input toml message file")
-                               .required(true)
-                               .index(1))
-                          .arg(Arg::with_name("lang")
-                               .short("l")
-                               .long("lang")
-                               .value_name("LANG")
-                               .takes_value(true)
-                               .multiple(true)
-                               .required(true)
-                               .help("Languages to generate messages for. Possible values: C, CPP, Python."))
-                          .get_matches();
-
+        .version("0.1")
+        .author("Fabien B. <fabien.bonneval@gmail.com>")
+        .about("Generate messages according to input toml file")
+        .arg(
+            Arg::with_name("FILE")
+                .help("set input toml message file")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("lang")
+                .short("l")
+                .long("lang")
+                .value_name("LANG")
+                .takes_value(true)
+                .multiple(true)
+                .required(true)
+                .help("Languages to generate messages for. Possible values: C, CPP, Python."),
+        )
+        .get_matches();
 
     let msg_file = matches.value_of("FILE").unwrap();
 
@@ -73,7 +75,6 @@ fn main() -> Result<(), Vec<String>> {
             file.write_all(&txt.into_bytes())
                 .map_err(|_e| vec!["Fail write file!".to_string()])?;
         }
-
     }
 
     Ok(())
